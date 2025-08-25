@@ -37,9 +37,9 @@ export default function ManualTradingJournal() {
   const form = useForm<SessionRules>({
     resolver: zodResolver(rulesSchema),
     defaultValues: {
-      profitTarget: 5,
-      lossLimit: 3,
-      maxTrades: 50,
+      profitTarget: 1,
+      lossLimit: 2,
+      maxTrades: 8,
     },
   });
 
@@ -197,7 +197,7 @@ export default function ManualTradingJournal() {
               <Button onClick={() => handleTrade('W')} disabled={!sessionActive} className="h-16 text-lg bg-green-600 hover:bg-green-700">
                 <ThumbsUp className="mr-2" /> WIN
               </Button>
-              <Button onClick={() => handleTrade('L1')} disabled={!sessionActive} className="h-16 text-lg bg-red-700 hover:bg-red-800">
+              <Button onClick={() => handleTrade('L1')} disabled={!sessionActive} className="h-16 text-lg bg-red-700 hover:red-800">
                 <ShieldAlert className="mr-2" /> LOSS (Step 1)
               </Button>
               <Button onClick={() => handleTrade('L2')} disabled={!sessionActive} className="h-16 text-lg bg-yellow-600 hover:bg-yellow-700">
