@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Navbar } from "@/components/navbar";
+import { Inter } from 'next/font/google'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: "Compounder's Luck",
-  description: "A Progressive Compound Trading Strategy Simulator",
+  description: "A Trading Strategy Toolkit",
 };
 
 export default function RootLayout({
@@ -13,14 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" className={`${inter.variable} dark`}>
       <body className="font-body antialiased bg-background text-foreground">
-        {children}
+        <Navbar />
+        <main className="container mx-auto px-4 py-8 md:py-12">
+          {children}
+        </main>
         <Toaster />
       </body>
     </html>

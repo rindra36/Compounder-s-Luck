@@ -1,70 +1,234 @@
+
 "use client";
 
-import { useState } from "react";
-import { SimulationForm } from "@/components/simulation-form";
-import { SimulationLog } from "@/components/simulation-log";
-import { runSimulation } from "@/lib/simulation";
-import type { LogEntry, SimulationParams, SimulationStatus } from "@/lib/types";
-import { Leaf } from "lucide-react";
+import { useState, useEffect } from "react";
+import { z } from "zod";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Progress } from "@/components/ui/progress";
+import { saveSession, Session, SessionRules, SessionStats, Trade } from "@/lib/journal";
+import { Trophy, ShieldAlert, Target, Repeat, StepForward, Frown, Smile, ThumbsUp, ThumbsDown } from "lucide-react";
 
-const SIMULATION_SPEED_MS = 150;
+const rulesSchema = z.object({
+  profitTarget: z.coerce.number().int().min(1, "Must be at least 1"),
+  lossLimit: z.coerce.number().int().min(1, "Must be at least 1"),
+  maxTrades: z.coerce.number().int().min(1, "Must be at least 1"),
+});
 
-export default function Home() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [status, setStatus] = useState<SimulationStatus>("idle");
+export default function ManualTradingJournal() {
+  const [sessionActive, setSessionActive] = useState(false);
+  const [rules, setRules] = useState<SessionRules>({ profitTarget: 0, lossLimit: 0, maxTrades: 0 });
+  const [stats, setStats] = useState<SessionStats>({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
+  const [tradeLog, setTradeLog] = useState<Trade[]>([]);
+  const [sessionResult, setSessionResult] = useState<Session['result'] | null>(null);
 
-  const handleStartSimulation = async (params: SimulationParams) => {
-    if (isRunning) return;
+  const form = useForm<SessionRules>({
+    resolver: zodResolver(rulesSchema),
+    defaultValues: {
+      profitTarget: 5,
+      lossLimit: 3,
+      maxTrades: 50,
+    },
+  });
 
-    setIsRunning(true);
-    setStatus("running");
-    setLogs([]);
+  useEffect(() => {
+    if (!sessionActive) return;
 
-    const simulationGenerator = runSimulation(params);
+    let result: Session['result'] | null = null;
+    if (stats.stagesCompleted >= rules.profitTarget) {
+      result = 'Profit Target Hit';
+    } else if (stats.significantLosses >= rules.lossLimit) {
+      result = 'Loss Limit Reached';
+    } else if (stats.totalTrades >= rules.maxTrades) {
+      result = 'Max Trades Reached';
+    }
 
-    const processNextStep = () => {
-      const next = simulationGenerator.next();
+    if (result) {
+      setSessionResult(result);
+      const sessionData: Session = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        rules,
+        result,
+        stats,
+        tradeLog,
+      };
+      saveSession(sessionData);
+      setSessionActive(false);
+    }
+  }, [stats, rules, sessionActive, tradeLog]);
 
-      if (!next.done) {
-        const logEntry = next.value;
-        setLogs((prevLogs) => [...prevLogs, logEntry]);
-        if (logEntry.type === 'FAILURE' || logEntry.type === 'SUCCESS') {
-          setStatus(logEntry.type.toLowerCase() as SimulationStatus);
-          setIsRunning(false);
-        } else {
-          setTimeout(processNextStep, SIMULATION_SPEED_MS);
-        }
-      } else {
-        setIsRunning(false);
+  const handleStartSession = (data: SessionRules) => {
+    setRules(data);
+    setStats({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
+    setTradeLog([]);
+    setSessionActive(true);
+    setSessionResult(null);
+  };
+
+  const handleTrade = (trade: Trade) => {
+    if (!sessionActive) return;
+
+    setTradeLog(prev => [...prev, trade]);
+    setStats(prev => {
+      const newStats = { ...prev, totalTrades: prev.totalTrades + 1 };
+      if (trade === 'W') {
+        newStats.stagesCompleted += 1;
+      } else if (trade === 'L1') {
+        newStats.significantLosses += 1;
       }
-    };
-    
-    processNextStep();
+      return newStats;
+    });
+  };
+
+  const resetSession = () => {
+    setSessionActive(false);
+    setSessionResult(null);
+    form.reset();
   };
 
   return (
-    <main className="container mx-auto px-4 py-8 md:py-12">
-      <div className="flex flex-col items-center text-center mb-12">
-        <div className="flex items-center gap-3 mb-4">
-          <Leaf className="h-10 w-10 text-primary-foreground" />
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary-foreground to-secondary-foreground text-transparent bg-clip-text">
-            Compounder's Luck
-          </h1>
-        </div>
-        <p className="max-w-2xl text-lg text-muted-foreground">
-          Simulate the "Progressive Compound" trading strategy. Define your parameters, press start, and see if luck is on your side.
-        </p>
+    <div className="flex flex-col items-center gap-8">
+      <div className="text-center">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Manual Trading Journal</h1>
+        <p className="max-w-2xl text-lg text-muted-foreground mt-2">Track your live trading sessions based on the Progressive Compound strategy.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-1">
-          <SimulationForm onStart={handleStartSimulation} isRunning={isRunning} />
+      {!sessionActive && !sessionResult && (
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Set Session Rules</CardTitle>
+            <CardDescription>Define your goals and limits before you start.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={form.handleSubmit(handleStartSession)} className="space-y-6">
+               <div className="space-y-4">
+                <Controller
+                  name="profitTarget"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <label className="text-sm font-medium">Profit Target (Stages)</label>
+                      <Input type="number" {...field} />
+                      {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+                    </div>
+                  )}
+                />
+                <Controller
+                  name="lossLimit"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                     <div>
+                      <label className="text-sm font-medium">Loss Limit (Significant Losses)</label>
+                      <Input type="number" {...field} />
+                      {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+                    </div>
+                  )}
+                />
+                <Controller
+                  name="maxTrades"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <label className="text-sm font-medium">Max Trades Limit</label>
+                      <Input type="number" {...field} />
+                      {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+                    </div>
+                  )}
+                />
+              </div>
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                <StepForward className="mr-2 h-4 w-4" />
+                Start Session
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {(sessionActive || sessionResult) && (
+        <div className="w-full max-w-2xl space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Live Session Dashboard</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-muted-foreground">Stages Completed</span>
+                  <span className="text-sm font-bold">{stats.stagesCompleted} / {rules.profitTarget}</span>
+                </div>
+                <Progress value={(stats.stagesCompleted / rules.profitTarget) * 100} />
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-muted-foreground">Significant Losses</span>
+                  <span className="text-sm font-bold">{stats.significantLosses} / {rules.lossLimit}</span>
+                </div>
+                <Progress value={(stats.significantLosses / rules.lossLimit) * 100} className="[&>*]:bg-destructive" />
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-muted-foreground">Total Trades</span>
+                  <span className="text-sm font-bold">{stats.totalTrades} / {rules.maxTrades}</span>
+                </div>
+                <Progress value={(stats.totalTrades / rules.maxTrades) * 100} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Trade Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button onClick={() => handleTrade('W')} disabled={!sessionActive} className="h-16 text-lg bg-green-600 hover:bg-green-700">
+                <ThumbsUp className="mr-2" /> WIN
+              </Button>
+              <Button onClick={() => handleTrade('L1')} disabled={!sessionActive} className="h-16 text-lg bg-red-700 hover:bg-red-800">
+                <ShieldAlert className="mr-2" /> LOSS (Step 1)
+              </Button>
+              <Button onClick={() => handleTrade('L2')} disabled={!sessionActive} className="h-16 text-lg bg-yellow-600 hover:bg-yellow-700">
+                <ThumbsDown className="mr-2" /> LOSS (Step 2)
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-        <div className="md:col-span-2">
-          <SimulationLog logs={logs} status={status} />
-        </div>
-      </div>
-    </main>
+      )}
+
+      <AlertDialog open={!!sessionResult} onOpenChange={() => !sessionResult && setSessionResult(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {sessionResult === 'Profit Target Hit' && <Trophy className="text-green-400" />}
+              {sessionResult === 'Loss Limit Reached' && <ShieldAlert className="text-red-400" />}
+              {sessionResult === 'Max Trades Reached' && <Target className="text-yellow-400" />}
+              Session Over: {sessionResult}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Your trading session has concluded. You can view the full details in the History page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={resetSession} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Repeat className="mr-2 h-4 w-4" />
+              Start New Session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
