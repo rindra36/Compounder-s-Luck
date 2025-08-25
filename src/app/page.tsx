@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Progress } from "@/components/ui/progress";
 import { saveSession, Session, SessionRules, SessionStats, Trade } from "@/lib/journal";
-import { Trophy, ShieldAlert, Target, Repeat, StepForward, Frown, Smile, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Trophy, ShieldAlert, Target, Repeat, StepForward, ThumbsUp, ThumbsDown } from "lucide-react";
 
 const rulesSchema = z.object({
   profitTarget: z.coerce.number().int().min(1, "Must be at least 1"),
@@ -33,6 +33,7 @@ export default function ManualTradingJournal() {
   const [stats, setStats] = useState<SessionStats>({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
   const [tradeLog, setTradeLog] = useState<Trade[]>([]);
   const [sessionResult, setSessionResult] = useState<Session['result'] | null>(null);
+  const [currentStep, setCurrentStep] = useState(0); // 0 = ready for step 1, 1 = ready for step 2
 
   const form = useForm<SessionRules>({
     resolver: zodResolver(rulesSchema),
@@ -74,6 +75,7 @@ export default function ManualTradingJournal() {
     setRules(data);
     setStats({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
     setTradeLog([]);
+    setCurrentStep(0);
     setSessionActive(true);
     setSessionResult(null);
   };
@@ -82,22 +84,35 @@ export default function ManualTradingJournal() {
     if (!sessionActive) return;
 
     setTradeLog(prev => [...prev, trade]);
-    setStats(prev => {
-      const newStats = { ...prev, totalTrades: prev.totalTrades + 1 };
-      if (trade === 'W') {
-        newStats.stagesCompleted += 1;
-      } else if (trade === 'L1') {
-        newStats.significantLosses += 1;
+    setStats(prev => ({ ...prev, totalTrades: prev.totalTrades + 1 }));
+
+    if (trade === 'W') {
+      if (currentStep === 0) {
+        // Completed Step 1
+        setCurrentStep(1);
+      } else {
+        // Completed Step 2 -> Stage Complete
+        setStats(prev => ({ ...prev, stagesCompleted: prev.stagesCompleted + 1 }));
+        setCurrentStep(0);
       }
-      return newStats;
-    });
+    } else if (trade === 'L1') {
+      // Significant Loss
+      setStats(prev => ({ ...prev, significantLosses: prev.significantLosses + 1 }));
+      setCurrentStep(0); // Reset progress within the stage
+    } else if (trade === 'L2') {
+      // Minor Loss, reset step
+      setCurrentStep(0);
+    }
   };
 
   const resetSession = () => {
     setSessionActive(false);
     setSessionResult(null);
+    setCurrentStep(0);
     form.reset();
   };
+
+  const stepButtonText = currentStep === 0 ? "WIN (Step 1)" : "WIN (Step 2)";
 
   return (
     <div className="flex flex-col items-center gap-8">
@@ -163,6 +178,7 @@ export default function ManualTradingJournal() {
           <Card>
             <CardHeader>
               <CardTitle>Live Session Dashboard</CardTitle>
+              <CardDescription>Current Step: {currentStep + 1}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -195,12 +211,12 @@ export default function ManualTradingJournal() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button onClick={() => handleTrade('W')} disabled={!sessionActive} className="h-16 text-lg bg-green-600 hover:bg-green-700">
-                <ThumbsUp className="mr-2" /> WIN
+                <ThumbsUp className="mr-2" /> {stepButtonText}
               </Button>
-              <Button onClick={() => handleTrade('L1')} disabled={!sessionActive} className="h-16 text-lg bg-red-700 hover:red-800">
+              <Button onClick={() => handleTrade('L1')} disabled={!sessionActive || currentStep === 1} className="h-16 text-lg bg-red-700 hover:red-800 disabled:opacity-50">
                 <ShieldAlert className="mr-2" /> LOSS (Step 1)
               </Button>
-              <Button onClick={() => handleTrade('L2')} disabled={!sessionActive} className="h-16 text-lg bg-yellow-600 hover:bg-yellow-700">
+              <Button onClick={() => handleTrade('L2')} disabled={!sessionActive || currentStep === 0} className="h-16 text-lg bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50">
                 <ThumbsDown className="mr-2" /> LOSS (Step 2)
               </Button>
             </CardContent>
