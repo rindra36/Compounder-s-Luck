@@ -96,8 +96,7 @@ export function ProfitProjectionTable({
           trade is a win.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[500px] pr-4">
+      <CardContent className="h-[500px] overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-card">
               <TableRow>
@@ -133,7 +132,6 @@ export function ProfitProjectionTable({
               )}
             </TableBody>
           </Table>
-        </ScrollArea>
       </CardContent>
     </Card>
   );
