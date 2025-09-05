@@ -52,20 +52,20 @@ export function ProfitProjectionTable({
         // Stop projection if investment becomes zero or negative
         return acc;
     }
-
+    
+    const previousBalance = previousStage ? previousStage.cumulativeBalance : initialBalance;
     const step1Profit = step1Investment * payoutMultiplier;
+    const balanceAfterStep1 = previousBalance + step1Profit;
     const step2Investment = step1Profit;
     const step2Profit = step2Investment * payoutMultiplier;
     const totalStageProfit = step1Profit + step2Profit;
-    
-    // Calculate cumulative balance
-    const previousBalance = previousStage ? previousStage.cumulativeBalance : initialBalance;
     const cumulativeBalance = previousBalance + totalStageProfit;
 
     acc.push({
       stage,
       step1Investment,
       step1Profit,
+      balanceAfterStep1,
       step2Investment,
       step2Profit,
       totalStageProfit,
@@ -77,6 +77,7 @@ export function ProfitProjectionTable({
       stage: number;
       step1Investment: number;
       step1Profit: number;
+      balanceAfterStep1: number;
       step2Investment: number;
       step2Profit: number;
       totalStageProfit: number;
@@ -112,7 +113,12 @@ export function ProfitProjectionTable({
                 projections.map((p) => (
                   <TableRow key={p.stage}>
                     <TableCell className="font-medium">{p.stage}</TableCell>
-                    <TableCell>{formatCurrency(p.step1Profit)}</TableCell>
+                    <TableCell>
+                      {formatCurrency(p.step1Profit)}
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({formatCurrency(p.balanceAfterStep1)})
+                      </span>
+                    </TableCell>
                     <TableCell>{formatCurrency(p.step2Profit)}</TableCell>
                     <TableCell>{formatCurrency(p.totalStageProfit)}</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(p.cumulativeBalance)}</TableCell>
