@@ -1,7 +1,7 @@
+
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -38,21 +38,13 @@ const formSchema = z.object({
 });
 
 type SimulationFormProps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: UseFormReturn<any>;
   onStart: (params: SimulationParams) => void;
   isRunning: boolean;
 };
 
-export function SimulationForm({ onStart, isRunning }: SimulationFormProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      initialInvestment: 10,
-      payoutPercentage: 85,
-      numberOfStages: 5,
-      winRate: 60,
-    },
-  });
-
+export function SimulationForm({ form, onStart, isRunning }: SimulationFormProps) {
   function onSubmit(values: z.infer<typeof formSchema>) {
     onStart(values);
   }
@@ -101,7 +93,7 @@ export function SimulationForm({ onStart, isRunning }: SimulationFormProps) {
                     <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
+                </Item>
               )}
             />
             <FormField

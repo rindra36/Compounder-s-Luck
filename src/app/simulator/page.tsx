@@ -1,18 +1,55 @@
+
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { SimulationForm } from "@/components/simulation-form";
 import { SimulationLog } from "@/components/simulation-log";
+import { ProfitProjectionTable } from "@/components/profit-projection";
 import { runSimulation } from "@/lib/simulation";
 import type { LogEntry, SimulationParams, SimulationStatus } from "@/lib/types";
 import { Leaf } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SIMULATION_SPEED_MS = 150;
+
+const formSchema = z.object({
+  initialInvestment: z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .positive({ message: "Must be a positive number." }),
+  payoutPercentage: z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .min(1, { message: "Must be at least 1." })
+    .max(200, { message: "Cannot exceed 200." }),
+  numberOfStages: z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .int({ message: "Must be a whole number." })
+    .min(1, { message: "Must be at least 1." }),
+  winRate: z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .min(0, { message: "Cannot be negative." })
+    .max(100, { message: "Cannot exceed 100." }),
+});
 
 export default function SimulatorPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState<SimulationStatus>("idle");
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      initialInvestment: 10,
+      payoutPercentage: 85,
+      numberOfStages: 5,
+      winRate: 60,
+    },
+    mode: "onChange", // to update projection table dynamically
+  });
+
+  const formValues = form.watch();
 
   const handleStartSimulation = async (params: SimulationParams) => {
     if (isRunning) return;
@@ -59,10 +96,24 @@ export default function SimulatorPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
-          <SimulationForm onStart={handleStartSimulation} isRunning={isRunning} />
+          <SimulationForm form={form} onStart={handleStartSimulation} isRunning={isRunning} />
         </div>
         <div className="md:col-span-2">
-          <SimulationLog logs={logs} status={status} />
+          <Tabs defaultValue="log">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="log">Simulation Log</TabsTrigger>
+              <TabsTrigger value="projection">Profit Projection</TabsTrigger>
+            </TabsList>
+            <TabsContent value="log">
+               <SimulationLog logs={logs} status={status} />
+            </TabsContent>
+            <TabsContent value="projection">
+              <ProfitProjectionTable 
+                initialInvestment={formValues.initialInvestment} 
+                payoutPercentage={formValues.payoutPercentage}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </>
