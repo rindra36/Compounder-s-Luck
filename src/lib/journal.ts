@@ -1,3 +1,4 @@
+
 export type Trade = 'W' | 'L1' | 'L2';
 
 export interface SessionRules {
@@ -12,6 +13,7 @@ export interface SessionStats {
   totalTrades: number;
 }
 
+// Represents a completed session for the history
 export interface Session {
   id: string;
   date: string;
@@ -21,7 +23,19 @@ export interface Session {
   tradeLog: Trade[];
 }
 
+// Represents an in-progress session
+export interface ActiveSession {
+  rules: SessionRules;
+  stats: SessionStats;
+  tradeLog: Trade[];
+  currentStep: number;
+}
+
+
 const HISTORY_KEY = 'tradingHistory';
+const ACTIVE_SESSION_KEY = 'activeTradingSession';
+
+// --- History Functions ---
 
 export function getHistory(): Session[] {
   if (typeof window === 'undefined') return [];
@@ -48,4 +62,32 @@ export function saveSession(session: Session): void {
 export function clearHistory(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(HISTORY_KEY);
+}
+
+
+// --- Active Session Functions ---
+
+export function getActiveSession(): ActiveSession | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const sessionJson = localStorage.getItem(ACTIVE_SESSION_KEY);
+      return sessionJson ? JSON.parse(sessionJson) : null;
+    } catch (error) {
+      console.error("Failed to parse active session from localStorage", error);
+      return null;
+    }
+}
+
+export function saveActiveSession(session: ActiveSession): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
+    } catch (error) {
+      console.error("Failed to save active session to localStorage", error);
+    }
+}
+
+export function clearActiveSession(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
 }

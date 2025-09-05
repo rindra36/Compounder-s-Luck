@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Progress } from "@/components/ui/progress";
-import { saveSession, Session, SessionRules, SessionStats, Trade } from "@/lib/journal";
+import { saveSession, Session, SessionRules, SessionStats, Trade, getActiveSession, saveActiveSession, clearActiveSession, ActiveSession } from "@/lib/journal";
 import { Trophy, ShieldAlert, Target, Repeat, StepForward, ThumbsUp, ThumbsDown } from "lucide-react";
 
 const rulesSchema = z.object({
@@ -44,6 +44,19 @@ export default function ManualTradingJournal() {
     },
   });
 
+  // Load active session on component mount
+  useEffect(() => {
+    const activeSession = getActiveSession();
+    if (activeSession) {
+      setRules(activeSession.rules);
+      setStats(activeSession.stats);
+      setTradeLog(activeSession.tradeLog);
+      setCurrentStep(activeSession.currentStep);
+      setSessionActive(true);
+    }
+  }, []);
+
+  // Check for session completion
   useEffect(() => {
     if (!sessionActive) return;
 
@@ -67,48 +80,69 @@ export default function ManualTradingJournal() {
         tradeLog,
       };
       saveSession(sessionData);
+      clearActiveSession();
       setSessionActive(false);
+    } else {
+      // Save progress if session is still active
+      const activeSessionData: ActiveSession = { rules, stats, tradeLog, currentStep };
+      saveActiveSession(activeSessionData);
     }
-  }, [stats, rules, sessionActive, tradeLog]);
+  }, [stats, rules, tradeLog, currentStep, sessionActive]);
+
 
   const handleStartSession = (data: SessionRules) => {
+    const initialStats = { stagesCompleted: 0, significantLosses: 0, totalTrades: 0 };
+    const initialTradeLog: Trade[] = [];
+    const initialStep = 0;
+
     setRules(data);
-    setStats({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
-    setTradeLog([]);
-    setCurrentStep(0);
+    setStats(initialStats);
+    setTradeLog(initialTradeLog);
+    setCurrentStep(initialStep);
     setSessionActive(true);
     setSessionResult(null);
+
+    // Save the new session immediately
+    saveActiveSession({ rules: data, stats: initialStats, tradeLog: initialTradeLog, currentStep: initialStep });
   };
 
   const handleTrade = (trade: Trade) => {
     if (!sessionActive) return;
 
-    setTradeLog(prev => [...prev, trade]);
-    setStats(prev => ({ ...prev, totalTrades: prev.totalTrades + 1 }));
+    const newTradeLog = [...tradeLog, trade];
+    let newStats = { ...stats, totalTrades: stats.totalTrades + 1 };
+    let newCurrentStep = currentStep;
 
     if (trade === 'W') {
       if (currentStep === 0) {
         // Completed Step 1
-        setCurrentStep(1);
+        newCurrentStep = 1;
       } else {
         // Completed Step 2 -> Stage Complete
-        setStats(prev => ({ ...prev, stagesCompleted: prev.stagesCompleted + 1 }));
-        setCurrentStep(0);
+        newStats = { ...newStats, stagesCompleted: newStats.stagesCompleted + 1 };
+        newCurrentStep = 0;
       }
     } else if (trade === 'L1') {
       // Significant Loss
-      setStats(prev => ({ ...prev, significantLosses: prev.significantLosses + 1 }));
-      setCurrentStep(0); // Reset progress within the stage
+      newStats = { ...newStats, significantLosses: newStats.significantLosses + 1 };
+      newCurrentStep = 0; // Reset progress within the stage
     } else if (trade === 'L2') {
       // Minor Loss, reset step
-      setCurrentStep(0);
+      newCurrentStep = 0;
     }
+    
+    setTradeLog(newTradeLog);
+    setStats(newStats);
+    setCurrentStep(newCurrentStep);
   };
 
   const resetSession = () => {
     setSessionActive(false);
     setSessionResult(null);
     setCurrentStep(0);
+    setStats({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
+    setTradeLog([]);
+    clearActiveSession();
     form.reset();
   };
 
