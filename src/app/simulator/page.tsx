@@ -16,6 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const SIMULATION_SPEED_MS = 150;
 
 const formSchema = z.object({
+  initialBalance: z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .gte(0, { message: "Cannot be negative." }),
   initialInvestment: z.coerce
     .number({ invalid_type_error: "Must be a number" })
     .positive({ message: "Must be a positive number." }),
@@ -41,6 +44,7 @@ export default function SimulatorPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      initialBalance: 1000,
       initialInvestment: 10,
       payoutPercentage: 85,
       numberOfStages: 5,
@@ -109,6 +113,7 @@ export default function SimulatorPage() {
             </TabsContent>
             <TabsContent value="projection">
               <ProfitProjectionTable 
+                initialBalance={formValues.initialBalance}
                 initialInvestment={formValues.initialInvestment} 
                 payoutPercentage={formValues.payoutPercentage}
               />

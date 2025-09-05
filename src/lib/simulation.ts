@@ -8,6 +8,7 @@ function formatCurrency(amount: number): string {
 }
 
 export function* runSimulation(params: SimulationParams): Generator<LogEntry, void, unknown> {
+  // initialBalance is not used in the live simulation, only projection.
   const { initialInvestment, payoutPercentage, numberOfStages, winRate } = params;
   const payoutMultiplier = payoutPercentage / 100;
 

@@ -1,4 +1,5 @@
 export interface SimulationParams {
+  initialBalance: number;
   initialInvestment: number;
   payoutPercentage: number;
   numberOfStages: number;

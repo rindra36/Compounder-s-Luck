@@ -20,6 +20,9 @@ import type { SimulationParams } from "@/lib/types";
 import { Rocket } from "lucide-react";
 
 const formSchema = z.object({
+    initialBalance: z.coerce
+    .number({ invalid_type_error: "Must be a number" })
+    .gte(0, { message: "Cannot be negative." }),
   initialInvestment: z.coerce
     .number({ invalid_type_error: "Must be a number" })
     .positive({ message: "Must be a positive number." }),
@@ -57,6 +60,19 @@ export function SimulationForm({ form, onStart, isRunning }: SimulationFormProps
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="initialBalance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Initial Balance ($)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="any" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="initialInvestment"

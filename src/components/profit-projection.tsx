@@ -19,6 +19,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ProfitProjectionTableProps = {
+  initialBalance: number;
   initialInvestment: number;
   payoutPercentage: number;
 };
@@ -34,6 +35,7 @@ function formatCurrency(amount: number): string {
   }
 
 export function ProfitProjectionTable({
+  initialBalance,
   initialInvestment,
   payoutPercentage,
 }: ProfitProjectionTableProps) {
@@ -44,8 +46,8 @@ export function ProfitProjectionTable({
       const stage = i + 1;
       let step1Investment = initialInvestment;
 
+      // From stage 2 onwards, the investment is the total profit of the previous stage
       if (i > 0) {
-        // Calculate the starting investment for the current stage based on the previous one's total profit
         let prevStageInvestment = initialInvestment;
         for (let j = 0; j < i; j++) {
             const prevProfit1 = prevStageInvestment * payoutMultiplier;
@@ -60,21 +62,17 @@ export function ProfitProjectionTable({
       const step2Profit = step2Investment * payoutMultiplier;
       const totalStageProfit = step1Profit + step2Profit;
       
-      let cumulativeBalance = initialInvestment;
       // Recalculate cumulative balance up to the current stage
-      let currentBalanceInvestment = initialInvestment;
+      let cumulativeBalance = initialBalance;
+      let currentInvestmentForBalance = initialInvestment;
       for (let k = 0; k < stage; k++) {
-        const profit1 = currentBalanceInvestment * payoutMultiplier;
+        const profit1 = currentInvestmentForBalance * payoutMultiplier;
         const profit2 = profit1 * payoutMultiplier;
         const totalProfit = profit1 + profit2;
-        if(k === 0) {
-            cumulativeBalance = initialInvestment + totalProfit;
-        } else {
-            cumulativeBalance += totalProfit;
-        }
-        currentBalanceInvestment = totalProfit;
+        
+        cumulativeBalance += totalProfit;
+        currentInvestmentForBalance = totalProfit;
       }
-
 
       return {
         stage,
@@ -88,7 +86,7 @@ export function ProfitProjectionTable({
     }
   );
 
-  const isValidInput = initialInvestment > 0 && payoutPercentage > 0;
+  const isValidInput = initialBalance >= 0 && initialInvestment > 0 && payoutPercentage > 0;
 
   return (
     <Card className="h-full">
@@ -125,7 +123,7 @@ export function ProfitProjectionTable({
               ) : (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        Enter a positive Initial Investment and Payout Percentage to see projections.
+                        Enter a valid Initial Balance, positive Initial Investment and Payout Percentage to see projections.
                     </TableCell>
                 </TableRow>
               )}
