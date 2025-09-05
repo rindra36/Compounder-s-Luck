@@ -93,7 +93,7 @@ export function SimulationForm({ form, onStart, isRunning }: SimulationFormProps
                     <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
-                </Item>
+                </FormItem>
               )}
             />
             <FormField
