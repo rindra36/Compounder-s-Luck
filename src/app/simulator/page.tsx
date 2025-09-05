@@ -116,6 +116,7 @@ export default function SimulatorPage() {
                 initialBalance={Number(formValues.initialBalance) || 0}
                 initialInvestment={Number(formValues.initialInvestment) || 0} 
                 payoutPercentage={Number(formValues.payoutPercentage) || 0}
+                numberOfStages={Number(formValues.numberOfStages) || 0}
               />
             </TabsContent>
           </Tabs>

@@ -22,9 +22,8 @@ type ProfitProjectionTableProps = {
   initialBalance: number;
   initialInvestment: number;
   payoutPercentage: number;
+  numberOfStages: number;
 };
-
-const MAX_STAGES_TO_PROJECT = 10;
 
 function formatCurrency(amount: number): string {
     if (isNaN(amount)) return "$0.00";
@@ -38,10 +37,11 @@ export function ProfitProjectionTable({
   initialBalance,
   initialInvestment,
   payoutPercentage,
+  numberOfStages,
 }: ProfitProjectionTableProps) {
   const payoutMultiplier = payoutPercentage / 100;
   
-  const projections = Array.from({ length: MAX_STAGES_TO_PROJECT }).reduce((acc, _, i) => {
+  const projections = Array.from({ length: numberOfStages }).reduce((acc, _, i) => {
     const stage = i + 1;
     
     // Determine the starting investment for the current stage
@@ -85,7 +85,7 @@ export function ProfitProjectionTable({
   }>);
 
 
-  const isValidInput = initialBalance >= 0 && initialInvestment > 0 && payoutPercentage > 0;
+  const isValidInput = initialBalance >= 0 && initialInvestment > 0 && payoutPercentage > 0 && numberOfStages > 0;
 
   return (
     <Card className="h-full">
@@ -127,7 +127,7 @@ export function ProfitProjectionTable({
               ) : (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        Enter a valid Initial Balance, positive Initial Investment and Payout Percentage to see projections.
+                        Enter a valid Initial Balance, positive Initial Investment, Payout Percentage, and Number of Stages to see projections.
                     </TableCell>
                 </TableRow>
               )}
