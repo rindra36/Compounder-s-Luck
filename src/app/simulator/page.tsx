@@ -113,9 +113,9 @@ export default function SimulatorPage() {
             </TabsContent>
             <TabsContent value="projection">
               <ProfitProjectionTable 
-                initialBalance={formValues.initialBalance}
-                initialInvestment={formValues.initialInvestment} 
-                payoutPercentage={formValues.payoutPercentage}
+                initialBalance={Number(formValues.initialBalance) || 0}
+                initialInvestment={Number(formValues.initialInvestment) || 0} 
+                payoutPercentage={Number(formValues.payoutPercentage) || 0}
               />
             </TabsContent>
           </Tabs>
