@@ -41,50 +41,48 @@ export function ProfitProjectionTable({
 }: ProfitProjectionTableProps) {
   const payoutMultiplier = payoutPercentage / 100;
   
-  const projections = Array.from({ length: MAX_STAGES_TO_PROJECT }).map(
-    (_, i) => {
-      const stage = i + 1;
-      let step1Investment = initialInvestment;
+  const projections = Array.from({ length: MAX_STAGES_TO_PROJECT }).reduce((acc, _, i) => {
+    const stage = i + 1;
+    
+    // Determine the starting investment for the current stage
+    const previousStage = acc[i-1];
+    const step1Investment = previousStage ? previousStage.totalStageProfit : initialInvestment;
 
-      // From stage 2 onwards, the investment is the total profit of the previous stage
-      if (i > 0) {
-        let prevStageInvestment = initialInvestment;
-        for (let j = 0; j < i; j++) {
-            const prevProfit1 = prevStageInvestment * payoutMultiplier;
-            const prevProfit2 = prevProfit1 * payoutMultiplier;
-            prevStageInvestment = prevProfit1 + prevProfit2;
-        }
-        step1Investment = prevStageInvestment;
-      }
-      
-      const step1Profit = step1Investment * payoutMultiplier;
-      const step2Investment = step1Profit;
-      const step2Profit = step2Investment * payoutMultiplier;
-      const totalStageProfit = step1Profit + step2Profit;
-      
-      // Recalculate cumulative balance up to the current stage
-      let cumulativeBalance = initialBalance;
-      let currentInvestmentForBalance = initialInvestment;
-      for (let k = 0; k < stage; k++) {
-        const profit1 = currentInvestmentForBalance * payoutMultiplier;
-        const profit2 = profit1 * payoutMultiplier;
-        const totalProfit = profit1 + profit2;
-        
-        cumulativeBalance += totalProfit;
-        currentInvestmentForBalance = totalProfit;
-      }
-
-      return {
-        stage,
-        step1Investment,
-        step1Profit,
-        step2Investment,
-        step2Profit,
-        totalStageProfit,
-        cumulativeBalance,
-      };
+    if (step1Investment <= 0) {
+        // Stop projection if investment becomes zero or negative
+        return acc;
     }
-  );
+
+    const step1Profit = step1Investment * payoutMultiplier;
+    const step2Investment = step1Profit;
+    const step2Profit = step2Investment * payoutMultiplier;
+    const totalStageProfit = step1Profit + step2Profit;
+    
+    // Calculate cumulative balance
+    const previousBalance = previousStage ? previousStage.cumulativeBalance : initialBalance;
+    const cumulativeBalance = previousBalance + totalStageProfit;
+
+    acc.push({
+      stage,
+      step1Investment,
+      step1Profit,
+      step2Investment,
+      step2Profit,
+      totalStageProfit,
+      cumulativeBalance,
+    });
+    
+    return acc;
+  }, [] as Array<{
+      stage: number;
+      step1Investment: number;
+      step1Profit: number;
+      step2Investment: number;
+      step2Profit: number;
+      totalStageProfit: number;
+      cumulativeBalance: number;
+  }>);
+
 
   const isValidInput = initialBalance >= 0 && initialInvestment > 0 && payoutPercentage > 0;
 
