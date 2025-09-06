@@ -64,6 +64,20 @@ export function clearHistory(): void {
   localStorage.removeItem(HISTORY_KEY);
 }
 
+export function deleteSessions(idsToDelete: string[]): Session[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        let history = getHistory();
+        const idsSet = new Set(idsToDelete);
+        history = history.filter(session => !idsSet.has(session.id));
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        return history;
+    } catch (error) {
+        console.error("Failed to delete sessions from localStorage", error);
+        return getHistory(); // return existing history on failure
+    }
+}
+
 
 // --- Active Session Functions ---
 
