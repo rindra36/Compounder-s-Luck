@@ -130,8 +130,14 @@ export default function ManualTradingJournal() {
         newCurrentStep = 0;
       }
     } else if (trade === 'L1') {
-      // Significant Loss
-      newStats = { ...newStats, significantLosses: newStats.significantLosses + 1 };
+      // This is a Step 1 Loss
+      if (stats.stagesCompleted > 0) {
+        // Revert a stage instead of counting a significant loss
+        newStats = { ...newStats, stagesCompleted: stats.stagesCompleted - 1 };
+      } else {
+        // No completed stages to fall back on, so it's a significant loss
+        newStats = { ...newStats, significantLosses: newStats.significantLosses + 1 };
+      }
       newCurrentStep = 0; // Reset progress within the stage
     } else if (trade === 'L2') {
       // Minor Loss, reset step
@@ -327,5 +333,3 @@ export default function ManualTradingJournal() {
     </div>
   );
 }
-
-    
