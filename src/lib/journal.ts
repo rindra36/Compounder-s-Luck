@@ -5,6 +5,7 @@ export interface SessionRules {
   profitTarget: number;
   lossLimit: number;
   maxTrades: number;
+  enforceMaxTrades: boolean;
 }
 
 export interface SessionStats {
@@ -85,7 +86,12 @@ export function getActiveSession(): ActiveSession | null {
     if (typeof window === 'undefined') return null;
     try {
       const sessionJson = localStorage.getItem(ACTIVE_SESSION_KEY);
-      return sessionJson ? JSON.parse(sessionJson) : null;
+      const session = sessionJson ? JSON.parse(sessionJson) : null;
+      // Migration for older sessions without enforceMaxTrades
+      if (session && typeof session.rules.enforceMaxTrades === 'undefined') {
+        session.rules.enforceMaxTrades = true;
+      }
+      return session;
     } catch (error) {
       console.error("Failed to parse active session from localStorage", error);
       return null;

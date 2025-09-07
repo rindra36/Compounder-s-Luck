@@ -7,6 +7,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -25,14 +27,24 @@ import { Trophy, ShieldAlert, Target, Repeat, StepForward, ThumbsUp, ThumbsDown,
 const rulesSchema = z.object({
   profitTarget: z.coerce.number().int().min(1, "Must be at least 1"),
   lossLimit: z.coerce.number().int().min(1, "Must be at least 1"),
-  maxTrades: z.coerce.number().int().min(1, "Must be at least 1"),
+  enforceMaxTrades: z.boolean(),
+  maxTrades: z.coerce.number().int(),
+}).refine(data => {
+    if (data.enforceMaxTrades) {
+        return data.maxTrades >= 1;
+    }
+    return true;
+}, {
+    message: "Must be at least 1",
+    path: ["maxTrades"],
 });
+
 
 export default function ManualTradingJournal() {
   const [sessionActive, setSessionActive] = useState(false);
   const [isEditingRules, setIsEditingRules] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [rules, setRules] = useState<SessionRules>({ profitTarget: 0, lossLimit: 0, maxTrades: 0 });
+  const [rules, setRules] = useState<SessionRules>({ profitTarget: 0, lossLimit: 0, maxTrades: 0, enforceMaxTrades: true });
   const [stats, setStats] = useState<SessionStats>({ stagesCompleted: 0, significantLosses: 0, totalTrades: 0 });
   const [tradeLog, setTradeLog] = useState<Trade[]>([]);
   const [sessionResult, setSessionResult] = useState<Session['result'] | null>(null);
@@ -43,9 +55,12 @@ export default function ManualTradingJournal() {
     defaultValues: {
       profitTarget: 1,
       lossLimit: 2,
+      enforceMaxTrades: true,
       maxTrades: 8,
     },
   });
+
+  const watchEnforceMaxTrades = form.watch("enforceMaxTrades");
 
   // Load active session on component mount
   useEffect(() => {
@@ -69,7 +84,7 @@ export default function ManualTradingJournal() {
       result = 'Profit Target Hit';
     } else if (stats.significantLosses >= rules.lossLimit) {
       result = 'Loss Limit Reached';
-    } else if (stats.totalTrades >= rules.maxTrades) {
+    } else if (rules.enforceMaxTrades && stats.totalTrades >= rules.maxTrades) {
       result = 'Max Trades Reached';
     }
 
@@ -159,6 +174,7 @@ export default function ManualTradingJournal() {
     form.reset({
       profitTarget: 1,
       lossLimit: 2,
+      enforceMaxTrades: true,
       maxTrades: 8,
     });
     setShowCancelConfirm(false);
@@ -188,8 +204,8 @@ export default function ManualTradingJournal() {
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <div>
-                      <label className="text-sm font-medium">Profit Target (Stages)</label>
-                      <Input type="number" {...field} />
+                      <Label htmlFor="profitTarget" className="text-sm font-medium">Profit Target (Stages)</Label>
+                      <Input id="profitTarget" type="number" {...field} />
                       {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
                     </div>
                   )}
@@ -199,23 +215,43 @@ export default function ManualTradingJournal() {
                   control={form.control}
                   render={({ field, fieldState }) => (
                      <div>
-                      <label className="text-sm font-medium">Loss Limit (Significant Losses)</label>
-                      <Input type="number" {...field} />
+                      <Label htmlFor="lossLimit" className="text-sm font-medium">Loss Limit (Significant Losses)</Label>
+                      <Input id="lossLimit" type="number" {...field} />
                       {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
                     </div>
                   )}
                 />
-                <Controller
-                  name="maxTrades"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <div>
-                      <label className="text-sm font-medium">Max Trades Limit</label>
-                      <Input type="number" {...field} />
-                      {fieldState.error && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+                 <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                        <Controller
+                            name="enforceMaxTrades"
+                            control={form.control}
+                            render={({ field }) => (
+                                <Switch
+                                    id="enforceMaxTrades"
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            )}
+                        />
+                        <Label htmlFor="enforceMaxTrades">Enforce Max Trades Limit</Label>
                     </div>
-                  )}
-                />
+                    <Controller
+                    name="maxTrades"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                        <div>
+                        <Input
+                            id="maxTrades"
+                            type="number"
+                            {...field}
+                            disabled={!watchEnforceMaxTrades}
+                        />
+                        {fieldState.error && watchEnforceMaxTrades && <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>}
+                        </div>
+                    )}
+                    />
+                </div>
               </div>
               <div className="flex gap-4">
                 {isEditingRules && (
@@ -258,9 +294,13 @@ export default function ManualTradingJournal() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm font-medium text-muted-foreground">Total Trades</span>
-                  <span className="text-sm font-bold">{stats.totalTrades} / {rules.maxTrades}</span>
+                  <span className="text-sm font-bold">
+                    {stats.totalTrades} {rules.enforceMaxTrades ? `/ ${rules.maxTrades}`: ''}
+                  </span>
                 </div>
-                <Progress value={(stats.totalTrades / rules.maxTrades) * 100} />
+                 {rules.enforceMaxTrades && (
+                    <Progress value={(stats.totalTrades / rules.maxTrades) * 100} />
+                )}
               </div>
             </CardContent>
              <CardFooter className="flex justify-end gap-2">
